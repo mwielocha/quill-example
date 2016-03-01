@@ -22,9 +22,11 @@ object QuillExample extends App {
   use quill_example;
 
   CREATE TABLE entities (
-    id bigint PRIMARY KEY,
-    value varchar
-  );
+    id bigint,
+    version bigint,
+    value varchar,
+    PRIMARY KEY ((id), version)
+  ) WITH CLUSTERING ORDER BY (version DESC);
 
 
    */
@@ -45,15 +47,15 @@ object QuillExample extends App {
 
   lazy val db = source(new CassandraAsyncSourceConfig[SnakeCase]("db"))
 
-  case class Entity(id: Long, name: String)
+  case class Entity(id: Long, version: Long, name: String)
 
   implicit val EntityReads = Json.reads[Entity]
   implicit val EntityWrites = Json.writes[Entity]
 
-  case class Entities(id: Long, value: Entity) extends JsonTable[Entity]
+  case class Entities(id: Long, version: Long, value: Entity) extends JsonTable[Entity]
 
   object Entities {
-    def apply(e: Entity): Entities = new Entities(e.id, e)
+    def apply(e: Entity): Entities = new Entities(e.id, e.version, e)
   }
 
   implicit val (e, d) = jsonEncoding[Entity]
@@ -62,12 +64,14 @@ object QuillExample extends App {
     query[Entities].insert
   }
 
-  val entities = (1 to 100).map(id => Entity(id, s"Entity #$id")).toList
+  val entities = (1 to 100).map(id => Entity(id, id % 2, s"Entity #$id")).toList
 
   val insert = db.run(i)(entities.map(Entities.apply))
 
   val q = quote {
     query[Entities]
+      .filter(x => Set(1L, 11, 21, 33).contains(x.id))
+      .filter(_.version > 0)
   }
 
   val select: Future[List[Entity]] = db.run(q).values
