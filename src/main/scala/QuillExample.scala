@@ -40,8 +40,8 @@ object QuillExample extends App {
   }
 
   def jsonEncoding[T : Reads : Writes] =
-    (mappedEncoding[Entity, String](Json.toJson(_).toString),
-      mappedEncoding[String, Entity](Json.parse(_).as[Entity]))
+    (mappedEncoding[T, String](Json.toJson(_).toString),
+      mappedEncoding[String, T](Json.parse(_).as[T]))
 
   implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
 
