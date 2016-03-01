@@ -66,7 +66,9 @@ object QuillExample extends App {
 
   val entities = (1 to 100).map(id => Entity(id, id % 2, s"Entity #$id")).toList
 
-  val insert = db.run(i)(entities.map(Entities.apply))
+  val insert = Future.sequence {
+    entities.map(e => db.run(i)(Entities(e)))
+  }
 
   val q = quote {
     query[Entities]
